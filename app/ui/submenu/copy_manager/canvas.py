@@ -4,7 +4,7 @@ from tkinter import Canvas
 from PIL import ImageTk, Image, ImageOps
 
 from app.api import container, file_is_copy, format_bytes
-from app.ui.info_tooltip import CreateToolTip
+from app.ui.tooltip import CreateToolTip
 
 
 default = dict(

@@ -5,8 +5,7 @@ from contextlib import suppress
 from tkinter import Menu, filedialog
 
 from app.api import container, directory_images_gen
-from app.ui import LensSettingsWindow
-from app.ui import CopyManagerWindow, LoggerWidget
+from app.ui import LensSettingsWindow, CopyManagerWindow, LoggerWidget
 
 
 class AppMenu(Menu):

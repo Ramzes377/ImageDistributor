@@ -3,9 +3,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 from queue import Queue
 from typing import Iterable
 
-from app.api import container
-from app.api import CustomThread
-from app.api import file_id, ImageHash
+from app.api import container, file_id, ImageHash, CustomThread
 
 container.load()
 

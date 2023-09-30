@@ -1,7 +1,6 @@
 import os
 
-import customtkinter
-from customtkinter import CTkFrame, CTkLabel, CTkScrollableFrame
+from customtkinter import CTkFrame, CTkLabel, CTkScrollableFrame, CTk
 
 from app.ui import SpecialCanvas
 
@@ -86,23 +85,3 @@ class ScrollableFrame(CTkScrollableFrame):
     def clear(self):
         for child in self.children.values():
             child.pack_forget()
-
-
-if __name__ == '__main__':
-    root = customtkinter.CTk()
-
-    root.grid_rowconfigure(0, weight=1)
-    root.columnconfigure(3, weight=1)
-
-    frame = ScrollableFrame(root)
-
-    container = []
-    for i in range(150):
-        container.append(('image.jpg', 'image.jpg'))
-
-    frame.container = container
-    frame.release_container()
-    frame.pack(fill='both', expand=True, padx=10, pady=10)
-
-    frame.smart_mark()
-    root.mainloop()

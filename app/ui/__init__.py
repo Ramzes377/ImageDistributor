@@ -13,4 +13,4 @@ from .main.bottom.frame import DistributeButtonsFrame
 
 from .menu import AppMenu
 from .app import App
-from .info_tooltip import CreateToolTip
+from .tooltip import CreateToolTip

@@ -16,25 +16,9 @@ class Window(Toplevel):
         self._is_hidden = False
         self.deiconify()
 
-        # try:
-        #     geom, state = self.config[type(self).__name__]
-        #     if state == 'zoomed':
-        #         self.state('zoomed')
-        #     else:
-        #         self.geometry(geom)
-        # except KeyError:
-        #     pass
-
     def hide(self):
-        #self.config[type(self).__name__] = (self.winfo_geometry(),
-        # self.state())
-
         self._is_hidden = True
         self.withdraw()
-
-        # geom, state = self.config[type(self.master).__name__]
-        # if state == 'zoomed':
-        #     self.master.state('zoomed')
 
     def switch_state(self):
         if self._is_hidden:
