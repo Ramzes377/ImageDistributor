@@ -3,7 +3,7 @@ import os
 import customtkinter
 from customtkinter import CTkFrame, CTkLabel, CTkScrollableFrame
 
-from app.ui.submenu.copy_manager.canvas import SpecialCanvas
+from app.ui import SpecialCanvas
 
 
 class ChooseBlock(CTkFrame):

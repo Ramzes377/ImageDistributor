@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from watchdog.observers import Observer
 
-from app.api.utils import is_image
+from app.api import is_image
 
 
 @dataclass

@@ -5,22 +5,11 @@ from threading import Thread
 
 from customtkinter import CTkButton, CTkFrame, CTkProgressBar
 
-from app.api import container
-from app.api.utils import directory_images_gen
-from app.ui.submenu.base_window import Window
+from app.api import container, directory_images_gen
+from app.ui import Window
 
-from .cache_loader import CacheLoader
-from .frame import ScrollableFrame
-
-# s = ttk.Style()
-# s.theme_names()
-# s.theme_use('clam')
-# TROUGH_COLOR = 'blue'
-# BAR_COLOR = 'green'
-# colors = dict(troughcolor='gray', bordercolor='white', background='#1f1f22',
-#          lightcolor='yellow',
-#          darkcolor='orange')
-# s.configure("TProgressbar", **colors)
+from .cache_loader import CacheLoader   # noqa
+from .frame import ScrollableFrame  # noqa
 
 
 class PairsContainer(set):

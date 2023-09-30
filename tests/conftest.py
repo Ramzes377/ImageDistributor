@@ -2,8 +2,7 @@ import os
 
 from pytest import fixture
 
-from app.api.utils import IMAGE_FORMATS
-from app.api import Container
+from app.api import Container, IMAGE_FORMATS
 
 
 @fixture(scope="function")

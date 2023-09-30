@@ -1,7 +1,6 @@
 import os
 import re
 import warnings
-from dataclasses import dataclass
 from typing import Generator
 
 from contextlib import suppress
@@ -22,10 +21,6 @@ def is_image(file_path: str) -> bool:
     return file_path.endswith(IMAGE_FORMATS)
 
 
-def directory_images_gen(working_directory: str) -> Generator:
-    return (file for file in os.listdir(working_directory) if is_image(file))
-
-
 def directory_full_traversal(working_directory):
     return (
         path
@@ -33,6 +28,10 @@ def directory_full_traversal(working_directory):
         for name in files
         if is_image(path := os.path.abspath(os.path.join(address, name)))
     )
+
+
+def directory_images_gen(working_directory: str) -> Generator:
+    return (file for file in os.listdir(working_directory) if is_image(file))
 
 
 def format_bytes(b):
@@ -61,25 +60,19 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-@dataclass(frozen=True, slots=True)
-class ImageHash:
-    path: str
-    hash: str
-
-
 class CustomWarning(Warning):
     default_format = warnings.formatwarning
 
     @classmethod
     def formatwarning(
-            cls: 'CustomWarning',
-            msg: str,
-            category: Warning,
-            filename: str,
-            lineno: int,
-            file: str = None,
-            line: int = None,
-            **kwargs
+        cls: 'CustomWarning',
+        msg: str,
+        category: Warning,
+        filename: str,
+        lineno: int,
+        file: str = None,
+        line: int = None,
+        **kwargs
     ):
         return f'{filename}: {lineno}: {msg}\n'
 

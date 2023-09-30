@@ -4,11 +4,9 @@ from contextlib import suppress
 
 from tkinter import Menu, filedialog
 
-from app.api import container
-from app.api.utils import directory_images_gen
-from app.ui.main.top.zoom.settings import LensSettingsWindow
-from app.ui.submenu.copy_manager.copy_manager import CopyManagerWindow
-from app.ui.submenu.logger.logger import LoggerWidget
+from app.api import container, directory_images_gen
+from app.ui import LensSettingsWindow
+from app.ui import CopyManagerWindow, LoggerWidget
 
 
 class AppMenu(Menu):

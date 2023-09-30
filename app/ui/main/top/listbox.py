@@ -7,9 +7,8 @@ from customtkinter import CTkScrollbar
 from watchdog.events import FileCreatedEvent, FileDeletedEvent
 from send2trash import send2trash
 
-from app.api import container
-from app.api.utils import directory_images_gen
-from app.ui.main.top.watchdog import Watchdog, QueueMessage
+from app.api import container, directory_images_gen
+from app.ui import Watchdog, QueueMessage
 
 default = dict(
     selectbackground='#425575',

@@ -1,9 +1,7 @@
 import customtkinter
 
 from app.api import container
-from app.ui.main.bottom.frame import DistributeButtonsFrame
-from app.ui.main.top.frame import TopFrame
-from app.ui.menu import AppMenu
+from app.ui import DistributeButtonsFrame, TopFrame, AppMenu
 
 
 class App(customtkinter.CTk):

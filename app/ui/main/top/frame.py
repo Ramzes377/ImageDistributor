@@ -1,8 +1,7 @@
 import customtkinter
 
 from app.ui.main.bottom.frame import DistributeButtonsFrame
-from app.ui.main.top.listbox import FileList
-from app.ui.main.top.display import ImageFrame
+from app.ui import FileList, ImageFrame
 
 
 class TopFrame(customtkinter.CTkFrame):

@@ -4,7 +4,7 @@ from typing import Generator
 from PIL import ImageTk
 from customtkinter import CTkCanvas, CTkRadioButton, CTkFrame
 
-from app.ui.submenu.base_window import Window
+from app.ui import Window
 from .modes import DistanceMode
 from .slider import SpecialSlider, LensState
 from .utils import SliderSettings, SliderRange

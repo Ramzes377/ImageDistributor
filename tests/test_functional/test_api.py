@@ -1,6 +1,6 @@
 import os
 
-from app.api.utils import directory_images_gen, ImageHash
+from app.api import directory_images_gen, ImageHash
 
 
 def test_images_list(prepare_data):

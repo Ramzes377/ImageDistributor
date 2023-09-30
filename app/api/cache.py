@@ -4,7 +4,13 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from app.api.utils import ImageHash, directory_full_traversal
+from app.api.utils import directory_full_traversal
+
+
+@dataclass(frozen=True, slots=True)
+class ImageHash:
+    path: str
+    hash: str
 
 
 def hamming2(s1: str, s2: str) -> int:
@@ -81,8 +87,8 @@ class Cache:
     @staticmethod
     def get_similar_naive(
         collection: dict[str],
-            token: str,
-            max_distance: int = 16
+        token: str,
+        max_distance: int = 16
     ) -> set[str]:
         return {path for path, file_token in collection.items()
                 if hamming2(token, file_token) < max_distance}

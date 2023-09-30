@@ -5,7 +5,7 @@ from tkinter import Menu, TclError
 from tkinter.ttk import Style, Treeview
 
 from app.api import container
-from app.ui.submenu.base_window import Window
+from app.ui import Window
 
 
 class LoggerWidget(Window):

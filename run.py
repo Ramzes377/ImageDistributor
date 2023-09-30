@@ -1,6 +1,6 @@
 import warnings
 
-from app.ui.app import App
+from app.ui import App
 
 warnings.simplefilter('default')
 

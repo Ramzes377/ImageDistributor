@@ -4,8 +4,8 @@ from queue import Queue
 from typing import Iterable
 
 from app.api import container
-from app.api.__thread import CustomThread
-from app.api.utils import file_id, ImageHash
+from app.api import CustomThread
+from app.api import file_id, ImageHash
 
 container.load()
 
