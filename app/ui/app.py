@@ -1,7 +1,11 @@
+import warnings
+
 import customtkinter
 
 from app.api import container
 from app.ui import DistributeButtonsFrame, TopFrame, AppMenu
+
+warnings.simplefilter('default')
 
 
 class App(customtkinter.CTk):
@@ -30,7 +34,4 @@ class App(customtkinter.CTk):
             if name == '!appmenu':
                 continue
 
-            children.change_directory(path) # noqa
-
-
-
+            children.change_directory(path)  # noqa
