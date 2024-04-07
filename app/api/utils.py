@@ -1,80 +1,67 @@
+import glob
 import os
-import re
-import warnings
-from typing import Generator
+from dataclasses import dataclass, asdict
+from typing import Generator, Iterable
 
-from contextlib import suppress
-
-import imagehash
-from PIL import Image
-
-IMAGE_FORMATS = (
-    'jpg',
-    'jpeg',
-    'png',
-    'gif',
-    'bmp',
-)
+image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp',
+                    '*.tiff', '*.webp']
 
 
-def is_image(file_path: str) -> bool:
-    return file_path.endswith(IMAGE_FORMATS)
+def directory_images(directory: str, recursive: bool = False) -> Generator:
+    if recursive:
+        directory = os.path.join(directory, '**')
+
+    for extension in image_extensions:
+        pattern = os.path.join(directory, extension)
+        yield from glob.glob(pattern, recursive=recursive)
 
 
-def directory_full_traversal(working_directory):
-    return (
-        path
-        for address, _, files in os.walk(working_directory)
-        for name in files
-        if is_image(path := os.path.abspath(os.path.join(address, name)))
-    )
+def hamming2(s1: str, s2: str, difference_limit: int = 17) -> int:
+    differences = 0
+    for i in range(len(s1)):
+        if s1[i] != s2[i]:
+            differences += 1
+        if differences >= difference_limit:
+            return 64
+    return differences
 
 
-def directory_images_gen(working_directory: str) -> Generator:
-    return (file for file in os.listdir(working_directory) if is_image(file))
+def get_similar_naive(
+        collection: dict[str, str],
+        token: str,
+        difference_limit: int = 16
+) -> set[str]:
+    return {path for path, file_token in collection.items()
+            if hamming2(token, file_token) < difference_limit}
 
 
-def format_bytes(b):
-    if b > 2 ** 20:
-        return f'{round(b / 2 ** 20, 2)} MB'
-    return f'{round(b / 2 ** 10, 1)} KB'
+def sizeof_fmt(num: float, suffix: str = "B") -> str:
+    for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
 
 
-def file_is_copy(file):
-    return re.findall(r'\(\d+\)', file)
+class OrderedSet(set):
+
+    def add(self, items: Iterable) -> None:
+        frozen_items = tuple(sorted(items))
+        super().add(frozen_items)
 
 
-def file_id(img_path: str) -> str | None:
-    with suppress(OSError):
-        with Image.open(img_path) as img:
-            return str(imagehash.dhash(img, 16))
+@dataclass(frozen=True, slots=True)
+class ScaleRange:
+    from_: int | float
+    to: int | float
+    resolution: int | float
+
+    dict = asdict
 
 
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args,
-                                                                 **kwargs)
-        return cls._instances[cls]
-
-
-class CustomWarning(Warning):
-    default_format = warnings.formatwarning
-
-    @classmethod
-    def formatwarning(
-        cls: 'CustomWarning',
-        msg: str,
-        category: Warning,
-        filename: str,
-        lineno: int,
-        file: str = None,
-        line: int = None,
-        **kwargs
-    ):
-        return f'{filename}: {lineno}: {msg}\n'
-
-
-warnings.formatwarning = CustomWarning.formatwarning
+@dataclass(frozen=True, slots=True)
+class ScaleSettings:
+    name: str
+    default: int | float
+    range: ScaleRange
+    settings_field_name: str

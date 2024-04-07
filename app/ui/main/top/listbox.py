@@ -5,10 +5,9 @@ from tkinter import Listbox, font, Menu
 
 from customtkinter import CTkScrollbar
 from watchdog.events import FileCreatedEvent, FileDeletedEvent
-from send2trash import send2trash
 
-from app.api import container, directory_images_gen
-from app.ui import Watchdog, QueueMessage
+from app.api import container, directory_images
+from app.api.core import QueueMessage, Watchdog
 
 default = dict(
     selectbackground='#425575',
@@ -26,7 +25,7 @@ class FileList(Listbox):
 
     def __init__(self, master, **kwargs):
 
-        self.watchdog = Watchdog(container.directory)
+        self.watchdog = Watchdog(container.sort_directory)
         self.watchdog.start()
 
         self.copy_container = kwargs.pop('copy_container')
@@ -56,15 +55,15 @@ class FileList(Listbox):
 
     @staticmethod
     def in_current_directory(path):
-        return path == container.directory
+        return path == container.sort_directory
 
     def change_directory(self):
         self.delete(0, 'end')
 
-        for filename in directory_images_gen(container.directory):
-            self.insert('end', filename)
+        for path in directory_images(container.sort_directory, recursive=False):
+            self.insert('end', os.path.basename(path))
 
-        self.watchdog.change_directory(container.directory) # noqa
+        self.watchdog.change_directory(container.sort_directory) # noqa
         self.select_by_index(0)
 
     def get_file_index(self, filename):
@@ -76,8 +75,9 @@ class FileList(Listbox):
 
     def update_image_to_selected(self, event=None):
         container.current_image = self.get_selected()
-        if container.directory and container.current_image:
-            path = os.path.join(container.directory, container.current_image)
+        if container.sort_directory and container.current_image:
+            path = os.path.join(container.sort_directory,
+                                container.current_image)
             self.update_image(path)
 
     def select_by_index(self, index: int):
@@ -102,10 +102,10 @@ class FileList(Listbox):
         self._prev_selection = x
         filename = self.get(x)
 
-        path = os.path.join(container.directory, filename)
+        path = os.path.join(container.sort_directory, filename)
 
         self.clear_menu.entryconfigure(0, command=lambda: self.delete(x))
-        self.clear_menu.entryconfigure(1, command=lambda: send2trash(path))
+        self.clear_menu.entryconfigure(1, command=lambda: container.remove_method(path))
         self.clear_menu.post(event.x_root, event.y_root)
 
     def _file_events_loop(self):
@@ -132,9 +132,6 @@ class FileList(Listbox):
             self.update_image(None)
         elif not self.curselection():
             self.select_by_index(0)
-
-        if copy_manager and modified:
-            copy_manager._begin_fill()  # noqa
 
         self.after(2000, self._file_events_loop)
 

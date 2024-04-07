@@ -4,6 +4,7 @@ from typing import Callable
 
 import customtkinter
 
+from app.api import container
 from app.ui.main.bottom.button import MoveButton
 
 
@@ -14,7 +15,7 @@ class DistributeButtonsFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.pack(side='bottom', fill='x', padx=10, pady=10)
-        self.render_buttons(os.path.abspath('./'))
+        self.render_buttons(container.sort_directory)
 
     def render_buttons(self, path: str) -> None:
         buttons = (w for name, w in self.children.items() if '!movebutton' in name)
@@ -27,5 +28,5 @@ class DistributeButtonsFrame(customtkinter.CTkFrame):
                 for name in folders if not name.startswith('.')
             ]
 
-    def change_directory(self, path: str):
+    def change_directory(self, path: str) -> None:
         self.render_buttons(path)

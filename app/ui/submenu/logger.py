@@ -64,11 +64,11 @@ class LoggerWidget(Window):
     def back_file(self, file: str, path: str) -> None:
         path = os.path.join(path, file)
         try:
-            shutil.move(path, container.directory)
+            shutil.move(path, container.sort_directory)
             self.tree.delete(self.tree.selection())
         except Exception as e:
             action = (
-                file, path, f'Возврат из {path}', container.directory, e
+                file, path, f'Возврат из {path}', container.sort_directory, e
             )
             self.__call__(action)
 

@@ -1,11 +1,8 @@
-import warnings
-
 import customtkinter
 
 from app.api import container
+from app.config import logger
 from app.ui import DistributeButtonsFrame, TopFrame, AppMenu
-
-warnings.simplefilter('default')
 
 
 class App(customtkinter.CTk):
@@ -24,10 +21,13 @@ class App(customtkinter.CTk):
         self.title('Image distributor')
 
     def destroy(self):
+        self.children['!copymanagerwindow'].destroy()
+
         super().quit()
+        super().destroy()
 
     def change_directory(self, path: str) -> None:
-        container.directory = path
+        container.sort_directory = path
         container.save()
 
         for name, children in self.children.items():
@@ -35,3 +35,5 @@ class App(customtkinter.CTk):
                 continue
 
             children.change_directory(path)  # noqa
+
+        logger.info('Changed directory to %s', path)

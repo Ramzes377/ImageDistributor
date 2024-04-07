@@ -1,82 +1,58 @@
-import json
 import os
-from collections import defaultdict
-from dataclasses import dataclass, field
+from json import JSONDecodeError
+from typing import Any, Optional, Callable
+
+from send2trash import send2trash
+from pydantic import BaseModel, Field, ValidationError
 
 from app.api.cache import Cache
-from app.api.utils import Singleton
+from app.api.core.lens import Lens
 
 
-class EnhancedJSONEncoder(json.JSONEncoder):
-
-    def default(self, o):
-        if isinstance(o, set):
-            return list(o)
-        if isinstance(o, defaultdict):
-            return {n: v if not isinstance(v, set) else list(v)
-                    for n, v in o.items()}
-        if isinstance(o, Cache):
-            return o.json()
-
-        return super().default(o)
-
-
-def cache_inner_struct():
-    return defaultdict(set)
-
-
-@dataclass(slots=True)
-class Container(metaclass=Singleton):
+class Container(BaseModel):
     """
     Instance of this class should be used for 2 purposes:
         - Shared variables
         - Saving state of instance as dill dump
     """
-    run_directory = os.getcwd()
 
-    save_name: str = 'app_data.json'
-    directory: str = os.path.abspath('./')
+    sort_directory: str = os.path.abspath('./')
+    transfer_directories: set[str] = Field(default_factory=set)
 
-    current_image: str = None
+    cache: Cache = Field(default_factory=Cache)
 
-    cache: Cache = field(default_factory=Cache)
+    current_image: Optional[str] = None
+    remove_method: Callable = Field(default=send2trash, exclude=True)
 
+    lens_settings: Lens = Field(default_factory=Lens)
+
+    def add_cache(self, items: list[Any]) -> None:
+        self.cache.add(items)
+        self.save()
+
+    @classmethod
     @property
     def path(self) -> str:
-        return os.path.join(self.run_directory, self.save_name)
-
-    @property
-    def json(self) -> dict:
-        dct = {name: getattr(self, name) for name in self.__slots__}
-        return json.dumps(dct, cls=EnhancedJSONEncoder)
+        return os.path.join(os.getcwd(), 'app_data.json')
 
     def save(self) -> None:
         os.system(f"attrib -h {self.path}")  # UNHIDE cache  file
-        with open(self.path, 'w') as f:
-            f.write(self.json)
+        with open(self.path, 'w', encoding="utf-8") as f:
+            f.write(self.model_dump_json())
         os.system(f"attrib +h {self.path}")  # HIDE cache  file
 
-    def from_json(self):
-        with open(self.path) as f:
-            data = json.load(f)
 
-        for key, value in data.items():
-            _type = self.__annotations__[key]
-            v = value if issubclass(_type, (int, str, list, dict)) \
-                else _type.from_json(value)
-            setattr(self, key, v)
+def build_container(container_path: str = Container.path) -> Container:
+    try:
+        with open(container_path, encoding="utf-8") as f:
+            data = f.read()
+        container_ = Container.parse_raw(data)
+        container_.cache.load(container_.sort_directory)
+    except (FileNotFoundError, JSONDecodeError, ValidationError) as e:
+        container_ = Container()
+        container_.save()
 
-    def load(self, rm_unexisted=True):
-        try:
-            self.from_json()
-            self.cache.rebuild_reversed_cache(self.directory)
-
-            if rm_unexisted:
-                self.cache.remove_unregistered(self.directory)
-
-        except (FileNotFoundError, EOFError, AttributeError):
-            self.save()  # create init dump
+    return container_
 
 
-container = Container()
-
+container = build_container()

@@ -1,10 +1,11 @@
 import os
-from collections import defaultdict
-from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import Iterable
+from typing import Iterable, Generator
+from pathlib import Path
 
-from app.api.utils import directory_full_traversal
+from pydantic import BaseModel, Field
+
+from app.api.utils import directory_images
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,89 +14,79 @@ class ImageHash:
     hash: str
 
 
-def hamming2(s1: str, s2: str) -> int:
-    c = 0
-    for i in range(len(s1)):
-        if s1[i] != s2[i]:
-            c += 1
-        if c == 17:
-            return 64
-    return c
+class _HashTree(BaseModel):
+    """ hash: files of same hash """
+
+    mapped_hashes: dict[str, set[str]] = Field(default_factory=dict)
+    subdirs: dict[str, '_HashTree'] = field(default_factory=dict)
+
+    def __get_node(self, parents: Iterable[str]) -> '_HashTree':
+        cur = self
+
+        for part in parents:
+            cur = cur.subdirs.setdefault(part, _HashTree())
+
+        return cur
+
+    def traverse(self, reverse_mapping: bool = False) -> Generator:
+
+        def _traverse(node: _HashTree, path: str = '') -> Generator:
+            if reverse_mapping:
+                for hash_, names in node.mapped_hashes.items():
+                    for name in names:
+                        yield os.path.join(path, name), hash_
+            else:
+                for hash_, names in node.mapped_hashes.items():
+                    for name in names:
+                        yield hash_, os.path.join(path, name)
+
+            for part in node.subdirs:
+                yield from _traverse(
+                    node=node.subdirs[part],
+                    path=os.path.join(path, part),
+                )
+
+        yield from _traverse(self)
+
+    def add(self, hashes: list[ImageHash]) -> None:
+
+        for image_hash in hashes:
+            absolute_path = Path(image_hash.path).absolute()
+            *parents, file = absolute_path.parts
+
+            hashing_cls = self.__get_node(parents)
+            hashing_cls.mapped_hashes.setdefault(image_hash.hash, set())
+            hashing_cls.mapped_hashes[image_hash.hash].add(file)
+
+    def remove_exited(self, directory: str) -> None:
+
+        hashing_node = self.__get_node(Path(directory).parts)
+
+        for hash_, files in hashing_node.mapped_hashes.items():
+            cpy_iterable = files.copy()
+            for file in cpy_iterable:
+                if not os.path.isfile(os.path.join(directory, file)):
+                    hashing_node.mapped_hashes[hash_].discard(file)
+
+    @property
+    def reverse_cache(self) -> dict:
+        return dict(self.traverse(reverse_mapping=True))
 
 
-def cache_inner_struct():
-    return defaultdict(set)
-
-
-@dataclass(slots=True)
-class Cache:
-    cache: defaultdict = field(
-        default_factory=lambda: defaultdict(cache_inner_struct))
-    reverse_cache: dict = field(default_factory=dict)
+class Cache(BaseModel):
+    hashes: _HashTree = Field(default_factory=_HashTree)
+    reverse_cache: dict = Field(default_factory=dict, exclude=True)
 
     def add(self, hashes: list[ImageHash]):
-        for image_hash in hashes:
-            path, name = os.path.split(image_hash.path)
-            self.cache[path][image_hash.hash].add(image_hash.path)
-            self.reverse_cache[image_hash.path] = image_hash.hash
+        self.hashes.add(hashes)
+        self.reverse_cache = self.hashes.reverse_cache
 
-    def discard(self, files: Iterable[tuple[str, str]], directory: str):
-        for img_id, name in files:
-            self.cache[directory][img_id].discard(name)
-            with suppress(KeyError):
-                path = os.path.join(directory, name)
-                self.reverse_cache.pop(path)
+    def load(self, directory: str, rm_exited: bool = True) -> None:
+        if rm_exited:
+            self.hashes.remove_exited(directory)
 
-    def remove_unregistered(self, directory: str):
-        unregistered_images = (
-            (_id, file)
-            for _id, files in
-            self.cache[directory].items()
-            for file in files if not os.path.isfile(file)
-        )
-        self.discard(list(unregistered_images), directory)
+        self.reverse_cache = self.hashes.reverse_cache
 
-    def rebuild_reversed_cache(self, directory: str) -> None:
-        for path, cache in self.cache.items():
-            for _id, files in cache.items():
-                for file in files:
-                    img_path = os.path.abspath(os.path.join(path, file))
-                    self.reverse_cache[img_path] = _id
-
-    @classmethod
-    def from_json(cls, data) -> 'Cache':
-        instance = cls()
-
-        cache = data.get('cache', {})
-        for path, items in cache.items():
-            for token, img_paths in items.items():
-                instance.cache[path][token] = set(img_paths)
-
-        return instance
-
-    def unregistered_images(self, directory: str):
-        return (
-            path
-            for path in directory_full_traversal(directory)
-            if path not in self.reverse_cache
-        )
-
-    def subpaths(self, directory: str) -> list[str]:
-        return [path for path in self.cache if
-                path.startswith(directory)]
-
-    @staticmethod
-    def get_similar_naive(
-        collection: dict[str],
-        token: str,
-        max_distance: int = 16
-    ) -> set[str]:
-        return {path for path, file_token in collection.items()
-                if hamming2(token, file_token) < max_distance}
-
-    def json(self) -> dict:
-        cache = {}
-        for path, items in self.cache.items():
-            cache[path] = {token: list(paths) for token, paths in
-                           items.items() if paths}
-        return {'cache': cache}
+    def unregistered_images(self, directory: str) -> Generator:
+        return (path for path in directory_images(directory, recursive=True)
+                if path not in self.reverse_cache)

@@ -11,7 +11,7 @@ def test_images_list(prepare_data):
 def test_container(container):
 
     assert container.current_image is None
-    assert isinstance(container.directory, str)
+    assert isinstance(container.sort_directory, str)
 
     container.current_image = 'abc'
     container.save()
@@ -29,7 +29,7 @@ def test_cache(container):
 
     cat_path = os.path.join(base, 'cat.jpg')
     cache.add([ImageHash(cat_path, "0000000000")])
-    folder_cache = cache.cache[base]
+    folder_cache = cache.hashes[base]
 
     img_hash: str = next(iter(folder_cache))
     assert cat_path in folder_cache[img_hash]

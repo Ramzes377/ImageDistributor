@@ -1,33 +1,19 @@
-import os
-import time
-import warnings
-from threading import Thread
+import multiprocessing
 
 from customtkinter import CTkButton, CTkFrame, CTkProgressBar
 
-from app.api import container, directory_images_gen
+from app.api.parallelization.background_worker import BackgroundWorker
+from app.api.parallelization.pipes.inner import InnerPipe
 from app.ui import Window
 
-from .cache_loader import CacheLoader   # noqa
-from .frame import ScrollableFrame  # noqa
-
-
-class PairsContainer(set):
-
-    def add(self, pair: tuple) -> None:
-        pair = tuple(sorted(pair))
-        super().add(pair)
+from .frame import ScrollableFrame
 
 
 class CopyManagerWindow(Window):
-    _is_hidden = True
+    interested_topics = ['percent', 'fill']
 
     def __init__(self, master, **kwargs):
         super(CopyManagerWindow, self).__init__(master, **kwargs)
-
-        self.copy_container = set()
-
-        self.mark = master.children['!topframe'].children['!filelist'].mark
 
         self.scrollable = ScrollableFrame(self)
         self.scrollable.pack(fill='both', expand=True, padx=10, pady=10)
@@ -35,33 +21,48 @@ class CopyManagerWindow(Window):
         frame = CTkFrame(self)
         frame.pack(side='bottom', fill='x')
 
-        self.auto = CTkButton(frame, text='Авто выделение',
-                              command=self.scrollable.smart_mark)
-        self.auto.pack(fill='x', side='left', padx=15, pady=20)
+        self._build_buttons(frame)
 
-        self.delete = CTkButton(frame, text='Удалить выделенные',
-                                command=self.scrollable.smart_remove)
-        self.delete.pack(fill='x', side='right', padx=15, pady=20)
+        progress_bar = CTkProgressBar(frame, mode="determinate")
+        progress_bar.pack(fill='x', expand=1, padx=60, pady=20)
+        progress_bar.set(0)
 
-        self.progress_bar = CTkProgressBar(frame, mode="determinate")
-        self.progress_bar.pack(fill='x', expand=1, padx=60, pady=20)
-        self.progress_bar.set(0)
+        self._set_progress = progress_bar.set
 
-        CacheLoader.begin(master, self.fill_container, self.progress_bar)
+        self.task_transport: dict[str, multiprocessing.Queue] = {
+            topic: multiprocessing.Queue()
+            for topic in self.interested_topics
+        }
+
+        self.worker = BackgroundWorker(task_transport=self.task_transport)
+        self.worker.start()
+        self.worker.add_tasks('fill')
+
+        self.inner_pipe = InnerPipe(
+            task_transport=self.task_transport,
+            set_progress=self._set_progress,
+            fill_task=self.scrollable.fill,
+        )
+        self.inner_pipe.run()
 
         self.title('Управление копиями')
         self.protocol('WM_DELETE_WINDOW', self.switch_state)
         self.minsize(width=800, height=150)
 
-    def _begin_fill(self):
-        self.progress_bar.set(0)
+    def _build_buttons(self, frame: CTkFrame) -> None:
+        self.auto = CTkButton(frame, text='Авто выделение',
+                              command=self.scrollable.smart_mark)
+        self.auto.pack(fill='x', side='left', padx=15, pady=20)
 
-        fill_thread = Thread(
-            target=self.fill_container,
-            args=[],
-        )
+        self.delete = CTkButton(frame, text='Удалить выделенные',
+                                command=self.scrollable.remove_selected)
+        self.delete.pack(fill='x', side='right', padx=15, pady=20)
 
-        CacheLoader.begin(self, fill_thread.start, self.progress_bar)
+    def destroy(self):
+        self.inner_pipe.stop()
+        self.worker.stop()
+
+        super().quit()
 
     def change_directory(self, path: str) -> None:
         self.scrollable.clear()
@@ -69,41 +70,4 @@ class CopyManagerWindow(Window):
         self.auto['state'] = 'disabled'
         self.delete['state'] = 'disabled'
 
-        self._begin_fill()
-
-    def fill_container(self, algorithm=container.cache.get_similar_naive):
-        pairs = PairsContainer()
-        to_mark = set()
-
-        begin_time = time.time()
-
-        comparable_files = {path: token for path, token in
-                            container.cache.reverse_cache.items()
-                            if path.startswith(container.directory)}
-
-        items = list(directory_images_gen(container.directory))
-
-        for i, name in enumerate(items):
-            path = os.path.join(container.directory, name)
-
-            try:
-                _hash = container.cache.reverse_cache[path]
-            except KeyError:
-                return
-
-            similar = algorithm(comparable_files, _hash)
-
-            for file in similar:
-                if path == file:
-                    continue
-
-                pairs.add((path, file))
-                if container.directory in file:
-                    to_mark.add(name)
-
-        msg = f"End caching work! Elapsed time: {(time.time() - begin_time):.2f}"
-        warnings.warn(msg, ResourceWarning)
-        truncated = pairs
-        self.scrollable.container = truncated
-        self.scrollable.release_container()
-        list(map(self.mark, to_mark))
+        self._set_progress(0)

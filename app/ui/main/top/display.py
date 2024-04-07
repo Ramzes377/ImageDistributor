@@ -1,31 +1,36 @@
 from contextlib import suppress
 from tkinter import TclError
 
+import numpy as np
 from customtkinter import CTkFrame, CTkCanvas
 from PIL import Image, ImageTk, ImageOps
 
-from .zoom import Zoom
+from app.ui.main.top.zoom import Zoom
+from app.ui.mixins import _WidgetSizeMixin
 
 
-class ImageFrame(CTkFrame):
+class ImageFrame(CTkFrame, _WidgetSizeMixin):
     original: Image = None
     image: ImageTk.PhotoImage = None
-    size: tuple[int, int] = None
+    size: np.array = None
 
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.zoom = Zoom(self, self.redraw)
+        self.display = CTkCanvas(self, bg='#2d2d30')
+        self.display.grid(sticky='wens')
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        self.display = CTkCanvas(self, bg='#2d2d30')
-        self.display.grid(sticky='wens')
+        self.zoom = Zoom(self, self.redraw)
+        self.zoom()
 
         self.display.bind("<Configure>", self.resize)
         self.display.bind("<MouseWheel>", self.zoom.zoomer)
         self.display.bind("<Motion>", self.zoom.crop)
+
+        self.prev_offset = (0, 0)
 
     def clear(self):
         self.original = None
@@ -57,24 +62,20 @@ class ImageFrame(CTkFrame):
 
         resized = ImageOps.contain(self.original, size)
         self.image = ImageTk.PhotoImage(resized)
-        self.size = resized.size
+        self.size = np.array(resized.size)
         self.display.delete("IMG")
-        self.redraw()
 
-    def redraw(self):
-        with suppress(TclError):
-            self.display.create_image(
-                *self._image_offset,
-                image=self.image,
-                anchor='nw',
-                tags="IMG"
-            )
-            self.zoom()
+        self.zoom()
+        self.redraw(force=True)
 
-    @property
-    def w(self):
-        return self.winfo_width()
-
-    @property
-    def h(self):
-        return self.winfo_height()
+    def redraw(self, force: bool = False):
+        with suppress(TclError, AttributeError):
+            offset = self._image_offset
+            if self.prev_offset != offset or force:
+                self.prev_offset = offset
+                self.display.create_image(
+                    *offset,
+                    image=self.image,
+                    anchor='nw',
+                    tags="IMG"
+                )
